@@ -2325,15 +2325,14 @@ dependencies = [
 [[package]]
 name = "rustify"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4800ce4c1cc2fec12c559dae2ddbf0e17fcee7569b796e6d75898efef443368b"
+source = "git+https://github.com/Dreaming-Codes/rustify?rev=8765af3ce63ae306b32a31857b7ae38bb8284f4e#8765af3ce63ae306b32a31857b7ae38bb8284f4e"
 dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
  "http 1.4.0",
  "reqwest",
- "rustify_derive",
+ "rustify_derive 0.5.5 (git+https://github.com/Dreaming-Codes/rustify?rev=8765af3ce63ae306b32a31857b7ae38bb8284f4e)",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -2347,6 +2346,19 @@ name = "rustify_derive"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ea7fda74240f7410d0198b603a8a2f662acc7d76b6667a49f9b162cd8d9b4f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde_urlencoded",
+ "syn 1.0.109",
+ "synstructure 0.12.6",
+]
+
+[[package]]
+name = "rustify_derive"
+version = "0.5.5"
+source = "git+https://github.com/Dreaming-Codes/rustify?rev=8765af3ce63ae306b32a31857b7ae38bb8284f4e#8765af3ce63ae306b32a31857b7ae38bb8284f4e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3305,7 +3317,7 @@ dependencies = [
  "http 1.4.0",
  "reqwest",
  "rustify",
- "rustify_derive",
+ "rustify_derive 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

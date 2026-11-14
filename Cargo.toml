@@ -54,3 +54,7 @@ debug = false
 [profile.debugging]
 inherits = "dev"
 debug = true
+
+# rustify with the optional `reqwest` feature, until a rustify release has it.
+[patch.crates-io]
+rustify = { git = "https://github.com/Dreaming-Codes/rustify", rev = "8765af3ce63ae306b32a31857b7ae38bb8284f4e" }
