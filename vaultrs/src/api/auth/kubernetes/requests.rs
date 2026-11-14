@@ -51,7 +51,7 @@ pub struct ReadKubernetesAuthConfigRequest {
 /// * Method: POST
 /// * Response: N/A
 /// * Reference: <https://developer.hashicorp.com/vault/api-docsauth/kubernetes#login>
-#[derive(Builder, Debug, Endpoint)]
+#[derive(Builder, Endpoint)]
 #[endpoint(path = "/auth/{self.mount}/login", method = "POST", builder = "true")]
 #[builder(setter(into))]
 pub struct LoginWithKubernetesRequest {
@@ -59,6 +59,35 @@ pub struct LoginWithKubernetesRequest {
     pub mount: String,
     pub role: String,
     pub jwt: String,
+}
+
+/// Leaves out the service account JWT, which is a credential.
+impl std::fmt::Debug for LoginWithKubernetesRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LoginWithKubernetesRequest")
+            .field("mount", &self.mount)
+            .field("role", &self.role)
+            .field("jwt", &format_args!("<{} bytes>", self.jwt.len()))
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LoginWithKubernetesRequest;
+
+    #[test]
+    fn debug_output_of_a_kubernetes_login_leaves_out_the_jwt() {
+        let login = LoginWithKubernetesRequest::builder()
+            .mount("kubernetes")
+            .role("app")
+            .jwt("sa-jwt-secret")
+            .build()
+            .unwrap();
+        let debug = format!("{login:?}");
+        assert!(debug.contains("jwt: <13 bytes>"), "{debug}");
+        assert!(!debug.contains("sa-jwt-secret"), "{debug}");
+    }
 }
 
 /// ## List Roles
