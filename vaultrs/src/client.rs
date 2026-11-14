@@ -2,8 +2,11 @@ use crate::api::AuthInfo;
 use crate::api::{token::responses::LookupTokenResponse, EndpointMiddleware};
 use crate::error::ClientError;
 use async_trait::async_trait;
+#[cfg(feature = "reqwest")]
 pub use reqwest::Identity;
+#[cfg(feature = "reqwest")]
 use reqwest::Proxy;
+#[cfg(feature = "reqwest")]
 use rustify::clients::reqwest::Client as HTTPClient;
 use std::time::Duration;
 use std::{env, fs};
@@ -15,8 +18,11 @@ const VALID_SCHEMES: [&str; 2] = ["http", "https"];
 /// The client interface capabale of interacting with API functions
 #[async_trait]
 pub trait Client: Send + Sync + Sized {
+    /// The HTTP client that sends API calls
+    type Http: rustify::client::Client;
+
     /// Returns the underlying HTTP client being used for API calls
-    fn http(&self) -> &HTTPClient;
+    fn http(&self) -> &Self::Http;
 
     /// Returns the middleware to be used when executing API calls
     fn middle(&self) -> &EndpointMiddleware;
@@ -50,18 +56,34 @@ pub trait Client: Send + Sync + Sized {
 
 /// A client which can be used to execute calls against a Vault server.
 ///
-/// A vault client is configured using [VaultClientSettings] and will
-/// automatically configure a backing instance of a [HTTPClient] which is
-/// used for executing [Endpoints][rustify::endpoint::Endpoint].
-pub struct VaultClient {
-    pub http: HTTPClient,
+/// A vault client is configured using [VaultClientSettings]. It executes
+/// [Endpoints][rustify::endpoint::Endpoint] with `H`: [VaultClient::new]
+/// configures a reqwest client from the settings, and [VaultClient::with_http]
+/// takes any [rustify::client::Client].
+#[cfg(feature = "reqwest")]
+pub struct VaultClient<H = HTTPClient> {
+    pub http: H,
+    pub middle: EndpointMiddleware,
+    pub settings: VaultClientSettings,
+}
+
+/// A client which can be used to execute calls against a Vault server.
+///
+/// A vault client is configured using [VaultClientSettings] and executes
+/// [Endpoints][rustify::endpoint::Endpoint] with the
+/// [rustify::client::Client] given to [VaultClient::with_http].
+#[cfg(not(feature = "reqwest"))]
+pub struct VaultClient<H> {
+    pub http: H,
     pub middle: EndpointMiddleware,
     pub settings: VaultClientSettings,
 }
 
 #[async_trait]
-impl Client for VaultClient {
-    fn http(&self) -> &HTTPClient {
+impl<H: rustify::client::Client> Client for VaultClient<H> {
+    type Http = H;
+
+    fn http(&self) -> &H {
         &self.http
     }
 
@@ -79,6 +101,30 @@ impl Client for VaultClient {
     }
 }
 
+impl<H> VaultClient<H> {
+    /// Creates a [VaultClient] that sends API calls with `http`. Only the
+    /// middleware settings (token, version, namespace) apply; `http` sends to
+    /// its own [base][rustify::client::Client::base] with its own transport
+    /// options.
+    pub fn with_http(settings: VaultClientSettings, http: H) -> Self {
+        // Configures middleware for endpoints to append API version and token
+        debug!("Using API version {}", settings.version);
+        let version_str = format!("v{}", settings.version);
+        let middle = EndpointMiddleware {
+            token: settings.token.clone(),
+            version: version_str,
+            wrap: None,
+            namespace: settings.namespace.clone(),
+        };
+        VaultClient {
+            settings,
+            middle,
+            http,
+        }
+    }
+}
+
+#[cfg(feature = "reqwest")]
 impl VaultClient {
     /// Creates a new [VaultClient] using the given [VaultClientSettings].
     #[instrument(skip(settings), err)]
@@ -133,16 +179,6 @@ impl VaultClient {
             http_client = http_client.identity(identity.clone());
         }
 
-        // Configures middleware for endpoints to append API version and token
-        debug!("Using API version {}", settings.version);
-        let version_str = format!("v{}", settings.version);
-        let middle = EndpointMiddleware {
-            token: settings.token.clone(),
-            version: version_str,
-            wrap: None,
-            namespace: settings.namespace.clone(),
-        };
-
         if let Some(proxy_url) = &settings.proxy {
             http_client = http_client.proxy(
                 Proxy::all(proxy_url.as_str())
@@ -154,11 +190,7 @@ impl VaultClient {
             .build()
             .map_err(|e| ClientError::RestClientBuildError { source: e })?;
         let http = HTTPClient::new(settings.address.as_str(), http_client);
-        Ok(VaultClient {
-            settings,
-            middle,
-            http,
-        })
+        Ok(VaultClient::with_http(settings, http))
     }
 }
 
@@ -181,6 +213,7 @@ pub struct VaultClientSettings {
     pub address: Url,
     #[builder(default = "self.default_ca_certs()")]
     pub ca_certs: Vec<String>,
+    #[cfg(feature = "reqwest")]
     #[builder(default = "self.default_identity()")]
     pub identity: Option<Identity>,
     #[builder(default)]
@@ -296,6 +329,7 @@ impl VaultClientSettingsBuilder {
         paths
     }
 
+    #[cfg(feature = "reqwest")]
     fn default_identity(&self) -> Option<reqwest::Identity> {
         // Default value can be set from environment
         let env_client_cert = env::var("VAULT_CLIENT_CERT").unwrap_or_default();

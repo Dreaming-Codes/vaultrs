@@ -21,6 +21,7 @@ pub enum ClientError {
     InvalidLoginMethodError,
     #[error("Error parsing value into JSON")]
     JsonParseError { source: serde_json::error::Error },
+    #[cfg(feature = "reqwest")]
     #[error("Error parsing CA certificate as PEM encoded certificate: {path}")]
     ParseCertificateError {
         source: reqwest::Error,
@@ -32,6 +33,7 @@ pub enum ClientError {
     ResponseDataEmptyError,
     #[error("Error parsing response wrapping result")]
     ResponseWrapError,
+    #[cfg(feature = "reqwest")]
     #[error("Error configuring REST client")]
     RestClientBuildError { source: reqwest::Error },
     #[error("An error occurred with the request")]

@@ -15,16 +15,17 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = [ "rustls" ]
-rustls = [ "rustify/rustls" ]
-native-tls = [ "rustify/native-tls" ]
-native-tls-vendored = [ "reqwest/native-tls-vendored", "rustify/native-tls" ]
-rustls-no-provider = ["rustify/rustls-no-provider"]
+reqwest = [ "dep:reqwest", "rustify/reqwest" ]
+rustls = [ "reqwest", "rustify/rustls" ]
+native-tls = [ "reqwest", "rustify/native-tls" ]
+native-tls-vendored = [ "reqwest", "reqwest/native-tls-vendored", "rustify/native-tls" ]
+rustls-no-provider = [ "reqwest", "rustify/rustls-no-provider" ]
 
 [dependencies]
 async-trait.workspace = true
 derive_builder.workspace = true
 http.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, optional = true }
 rustify_derive.workspace = true
 rustify.workspace = true
 serde_json.workspace = true
