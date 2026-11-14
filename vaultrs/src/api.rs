@@ -169,10 +169,10 @@ impl MiddleWare for EndpointMiddleware {
         // Add Vault token to all requests
         if !self.token.is_empty() {
             trace!("Middleware: adding token to header");
-            req.headers_mut().append(
-                "X-Vault-Token",
-                http::HeaderValue::from_str(self.token.as_str()).unwrap(),
-            );
+            let mut token = http::HeaderValue::from_str(self.token.as_str())
+                .map_err(|e| RestClientError::GenericError { source: e.into() })?;
+            token.set_sensitive(true);
+            req.headers_mut().append("X-Vault-Token", token);
         }
 
         // Optionally wrap response
